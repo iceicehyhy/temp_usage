@@ -153,6 +153,8 @@ for epoch in range(1,20):
     # set the order in which to visit the image from the training set
     shuffled_indices=torch.randperm(50000)
  
+    start=time.time()
+    
     for count in range(0,50000,bs):
     
         # Set the gradients to zeros
