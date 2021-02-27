@@ -115,29 +115,28 @@ print(net)
 net.named_parameters()
 bs = 128
 
+data_path=check_cifar_dataset_exists()
+device= torch.device("cuda")
+print(device)
+
+train_data=torch.load(data_path+'cifar/train_data.pt')
+train_label=torch.load(data_path+'cifar/train_label.pt')
+test_data=torch.load(data_path+'cifar/test_data.pt')
+test_label=torch.load(data_path+'cifar/test_label.pt')
+
+print(train_data.size())
+print(test_data.size())
+
+mean= train_data.mean()
+std= train_data.std()
+
+net = net.to(device)
+
+mean = mean.to(device)
+
+std = std.to(device)
+
 def train(model):
-
-    data_path=check_cifar_dataset_exists()
-    device= torch.device("cuda")
-    print(device)
-
-    train_data=torch.load(data_path+'cifar/train_data.pt')
-    train_label=torch.load(data_path+'cifar/train_label.pt')
-    test_data=torch.load(data_path+'cifar/test_data.pt')
-    test_label=torch.load(data_path+'cifar/test_label.pt')
-
-    print(train_data.size())
-    print(test_data.size())
-
-    mean= train_data.mean()
-    std= train_data.std()
-
-    net = net.to(device)
-
-    mean = mean.to(device)
-
-    std = std.to(device)
-
     criterion = nn.CrossEntropyLoss()
     my_lr=0.25 
     bs= 128
