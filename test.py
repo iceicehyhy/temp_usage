@@ -91,6 +91,9 @@ class VGG_convnet(nn.Module):
         x = self.linear3(x) 
         
         return x
+    
+    def return_name(self):
+        return 'VGG_convnet'
 
 net=VGG_convnet()
 
@@ -209,6 +212,17 @@ for epoch in range(1,20):
     print('epoch=',epoch, '\t time=', elapsed,'min','\t lr=', my_lr  ,'\t loss=', total_loss , '\t error=', total_error*100 ,'percent')
     eval_on_test_set() 
     print(' ')
+    
+    if (epoch % 9):
+        if isinstance(net, torch.nn.DataParallel):
+            net = net.module
+        torch.save({
+            'epoch': epoch,
+            'optim_state_dict': optimizer.state_dict(),
+            'model_state_dict': model.state_dict()}, net.return_name() + 'ckpt.pth'
+        )
+        
+
 
 def test_result():
     # choose a picture at random
