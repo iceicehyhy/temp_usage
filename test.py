@@ -5,23 +5,10 @@ import torch.optim as optim
 from random import randint
 import utils
 import time
-
-device= torch.device("cuda")
-print(device)
-
 from utils import check_cifar_dataset_exists
-data_path=check_cifar_dataset_exists()
 
-train_data=torch.load(data_path+'cifar/train_data.pt')
-train_label=torch.load(data_path+'cifar/train_label.pt')
-test_data=torch.load(data_path+'cifar/test_data.pt')
-test_label=torch.load(data_path+'cifar/test_label.pt')
 
-print(train_data.size())
-print(test_data.size())
 
-mean= train_data.mean()
-std= train_data.std()
 
 class VGG_convnet(nn.Module):
 
@@ -95,22 +82,6 @@ class VGG_convnet(nn.Module):
     def return_name(self):
         return 'VGG_convnet'
 
-net=VGG_convnet()
-
-print(net)
-#utils.display_num_param(net)
-net.named_parameters()
-
-net = net.to(device)
-
-mean = mean.to(device)
-
-std = std.to(device)
-
-criterion = nn.CrossEntropyLoss()
-my_lr=0.25 
-bs= 128
-
 def eval_on_test_set():
 
     running_error=0
@@ -137,107 +108,135 @@ def eval_on_test_set():
     total_error = running_error/num_batches
     print( 'error rate on test set =', total_error*100 ,'percent')
 
+net=VGG_convnet()
+
+print(net)
+#utils.display_num_param(net)
+net.named_parameters()
+
+def train(model):
+
+    data_path=check_cifar_dataset_exists()
+    device= torch.device("cuda")
+    print(device)
+
+    train_data=torch.load(data_path+'cifar/train_data.pt')
+    train_label=torch.load(data_path+'cifar/train_label.pt')
+    test_data=torch.load(data_path+'cifar/test_data.pt')
+    test_label=torch.load(data_path+'cifar/test_label.pt')
+
+    print(train_data.size())
+    print(test_data.size())
+
+    mean= train_data.mean()
+    std= train_data.std()
+
+    net = net.to(device)
+
+    mean = mean.to(device)
+
+    std = std.to(device)
+
+    criterion = nn.CrossEntropyLoss()
+    my_lr=0.25 
+    bs= 128
+
     start=time.time()
 
-for epoch in range(1,20):
+    for epoch in range(1,20):
+        
+        # divide the learning rate by 2 at epoch 10, 14 and 18
+        if epoch==10 or epoch == 14 or epoch==18:
+            my_lr = my_lr / 2
+        
+        # create a new optimizer at the beginning of each epoch: give the current learning rate.   
+        optimizer=torch.optim.SGD( net.parameters() , lr=my_lr )
+            
+        # set the running quatities to zero at the beginning of the epoch
+        running_loss=0
+        running_error=0
+        num_batches=0
+        
+        # set the order in which to visit the image from the training set
+        shuffled_indices=torch.randperm(50000)
     
-    # divide the learning rate by 2 at epoch 10, 14 and 18
-    if epoch==10 or epoch == 14 or epoch==18:
-        my_lr = my_lr / 2
-    
-    # create a new optimizer at the beginning of each epoch: give the current learning rate.   
-    optimizer=torch.optim.SGD( net.parameters() , lr=my_lr )
+        start=time.time()
         
-    # set the running quatities to zero at the beginning of the epoch
-    running_loss=0
-    running_error=0
-    num_batches=0
-    
-    # set the order in which to visit the image from the training set
-    shuffled_indices=torch.randperm(50000)
- 
-    start=time.time()
-    
-    for count in range(0,50000,bs):
-    
-        # Set the gradients to zeros
-        optimizer.zero_grad()
+        for count in range(0,50000,bs):
         
-        # create a minibatch       
-        indices=shuffled_indices[count:count+bs]
-        minibatch_data =  train_data[indices]
-        minibatch_label=  train_label[indices]
-        
-        # send them to the gpu
-        minibatch_data=minibatch_data.to(device)
-        minibatch_label=minibatch_label.to(device)
-        
-        # normalize the minibatch (this is the only difference compared to before!)
-        inputs = (minibatch_data - mean)/std
-        
-        # tell Pytorch to start tracking all operations that will be done on "inputs"
-        inputs.requires_grad_()
+            # Set the gradients to zeros
+            optimizer.zero_grad()
+            
+            # create a minibatch       
+            indices=shuffled_indices[count:count+bs]
+            minibatch_data =  train_data[indices]
+            minibatch_label=  train_label[indices]
+            
+            # send them to the gpu
+            minibatch_data=minibatch_data.to(device)
+            minibatch_label=minibatch_label.to(device)
+            
+            # normalize the minibatch (this is the only difference compared to before!)
+            inputs = (minibatch_data - mean)/std
+            
+            # tell Pytorch to start tracking all operations that will be done on "inputs"
+            inputs.requires_grad_()
 
-        # forward the minibatch through the net 
-        scores=net( inputs ) 
+            # forward the minibatch through the net 
+            scores=net( inputs ) 
 
-        # Compute the average of the losses of the data points in the minibatch
-        loss =  criterion( scores , minibatch_label) 
-        
-        # backward pass to compute dL/dU, dL/dV and dL/dW   
-        loss.backward()
+            # Compute the average of the losses of the data points in the minibatch
+            loss =  criterion( scores , minibatch_label) 
+            
+            # backward pass to compute dL/dU, dL/dV and dL/dW   
+            loss.backward()
 
-        # do one step of stochastic gradient descent: U=U-lr(dL/dU), V=V-lr(dL/dU), ...
-        optimizer.step()
-        
+            # do one step of stochastic gradient descent: U=U-lr(dL/dU), V=V-lr(dL/dU), ...
+            optimizer.step()
+            
 
-        # START COMPUTING STATS
+            # START COMPUTING STATS
+            
+            # add the loss of this batch to the running loss
+            running_loss += loss.detach().item()
+            
+            # compute the error made on this batch and add it to the running error       
+            error = utils.get_error( scores.detach() , minibatch_label)
+            running_error += error.item()
+            
+            num_batches+=1        
         
-        # add the loss of this batch to the running loss
-        running_loss += loss.detach().item()
         
-        # compute the error made on this batch and add it to the running error       
-        error = utils.get_error( scores.detach() , minibatch_label)
-        running_error += error.item()
-        
-        num_batches+=1        
-    
-    
-    # compute stats for the full training set
-    total_loss = running_loss/num_batches
-    total_error = running_error/num_batches
-    elapsed = (time.time()-start)/60
-    
-
-    print('epoch=',epoch, '\t time=', elapsed,'min','\t lr=', my_lr  ,'\t loss=', total_loss , '\t error=', total_error*100 ,'percent')
-    eval_on_test_set() 
-    print(' ')
-    
-    if (epoch % 9):
-        if isinstance(net, torch.nn.DataParallel):
-            net = net.module
-        torch.save({
-            'epoch': epoch,
-            'optim_state_dict': optimizer.state_dict(),
-            'model_state_dict': model.state_dict()}, net.return_name() + 'ckpt.pth'
-        )
+        # compute stats for the full training set
+        total_loss = running_loss/num_batches
+        total_error = running_error/num_batches
+        elapsed = (time.time()-start)/60
         
 
+        print('epoch=',epoch, '\t time=', elapsed,'min','\t lr=', my_lr  ,'\t loss=', total_loss , '\t error=', total_error*100 ,'percent')
+        eval_on_test_set() 
+        print(' ')
+        
+        if (epoch % 9 == 0):
+            if isinstance(net, torch.nn.DataParallel):
+                net = net.module
+            torch.save({
+                'epoch': epoch,
+                'optim_state_dict': optimizer.state_dict(),
+                'model_state_dict': net.state_dict()}, net.return_name() + 'ckpt.pth'
+            )
 
-def test_result():
-    # choose a picture at random
-    idx=randint(0, 10000-1)
-    im=test_data[idx]
 
-    # diplay the picture
-    utils.show(im)
+def load_pretrained_weight(model, weight_path):
+    pretrained = torch.load(weight_path) 
+    pretrained_dict = pretrained['model_state_dict']
+    model_dict = model.state_dict()
+    for k, v in pretrained_dict.items():
+        if k in model_dict: 
+            model_dict[k].copy_(v)
 
-    # send to device, rescale, and view as a batch of 1 
-    im = im.to(device)
-    im= (im-mean) / std
-    im=im.view(1,3,32,32)
+pre_trained_weight = 'VGG_convnetckpt.pth'
 
-    # feed it to the net and display the confidence scores
-    scores =  net(im) 
-    probs= F.softmax(scores, dim=1)
-    utils.show_prob_cifar(probs.cpu())
+load_pretrained_weight(net, pre_trained_weight)
+eval_on_test_set() 
+print(' ')
