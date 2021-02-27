@@ -113,6 +113,7 @@ net=VGG_convnet()
 print(net)
 #utils.display_num_param(net)
 net.named_parameters()
+bs = 128
 
 def train(model):
 
@@ -228,6 +229,7 @@ def train(model):
 
 
 def load_pretrained_weight(model, weight_path):
+    print ("Loading pre-trained weight %s" %(weight_path))
     pretrained = torch.load(weight_path) 
     pretrained_dict = pretrained['model_state_dict']
     model_dict = model.state_dict()
