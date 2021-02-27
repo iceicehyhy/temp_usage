@@ -108,6 +108,32 @@ def eval_on_test_set():
     total_error = running_error/num_batches
     print( 'error rate on test set =', total_error*100 ,'percent')
 
+def eval_on_train_set():
+
+    running_error=0
+    num_batches=0
+
+    for i in range(0,10000,bs):
+
+        minibatch_data =  train_data[i:i+bs]
+        minibatch_label= train_label[i:i+bs]
+
+        minibatch_data=minibatch_data.to(device)
+        minibatch_label=minibatch_label.to(device)
+        
+        inputs = (minibatch_data - mean)/std
+
+        scores=net( inputs ) 
+
+        error = utils.get_error( scores , minibatch_label)
+
+        running_error += error.item()
+
+        num_batches+=1
+
+    total_error = running_error/num_batches
+    print( 'error rate on train set =', total_error*100 ,'percent')
+
 net=VGG_convnet()
 
 print(net)
@@ -239,5 +265,5 @@ def load_pretrained_weight(model, weight_path):
 pre_trained_weight = 'VGG_convnetckpt.pth'
 
 load_pretrained_weight(net, pre_trained_weight)
-eval_on_test_set() 
+eval_on_train_set() 
 print(' ')
