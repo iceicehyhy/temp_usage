@@ -210,20 +210,20 @@ for epoch in range(1,20):
     eval_on_test_set() 
     print(' ')
 
-    def test_result():
-        # choose a picture at random
-        idx=randint(0, 10000-1)
-        im=test_data[idx]
+def test_result():
+    # choose a picture at random
+    idx=randint(0, 10000-1)
+    im=test_data[idx]
 
-        # diplay the picture
-        utils.show(im)
+    # diplay the picture
+    utils.show(im)
 
-        # send to device, rescale, and view as a batch of 1 
-        im = im.to(device)
-        im= (im-mean) / std
-        im=im.view(1,3,32,32)
+    # send to device, rescale, and view as a batch of 1 
+    im = im.to(device)
+    im= (im-mean) / std
+    im=im.view(1,3,32,32)
 
-        # feed it to the net and display the confidence scores
-        scores =  net(im) 
-        probs= F.softmax(scores, dim=1)
-        utils.show_prob_cifar(probs.cpu())
+    # feed it to the net and display the confidence scores
+    scores =  net(im) 
+    probs= F.softmax(scores, dim=1)
+    utils.show_prob_cifar(probs.cpu())
